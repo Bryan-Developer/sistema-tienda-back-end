@@ -5,7 +5,7 @@ const bodyParser = require('body-parser');
 const app = express();
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
-app.use(require('./rests-controllers/usuarioRestController'));
+app.use(require('./rests-controllers/index'));
 mongoose.set('useCreateIndex', true);
 mongoose.connect(
   process.env.URLDB,
