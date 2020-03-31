@@ -1,9 +1,10 @@
 const Usuario = require('../entidades/usuario');
+const { verificaToken, verificaRole } = require('../middlewares/autenticacion');
 const express = require('express');
 const bcrypt = require('bcrypt');
 const _ = require('underscore');
 const app = express();
-app.get('/usuario', (request, response) => {
+app.get('/usuario', verificaToken, (request, response) => {
   let desde = request.query.desde || 0;
   desde = Number(desde);
   let limite = request.query.limite || 5;
@@ -33,7 +34,7 @@ app.get('/usuario', (request, response) => {
       });
     });
 });
-app.get('/usuario/:id', (request, response) => {
+app.get('/usuario/:id', verificaToken, (request, response) => {
   let id = request.params.id;
   Usuario.findById(id, (error, usuario) => {
     if (error) {
@@ -45,7 +46,7 @@ app.get('/usuario/:id', (request, response) => {
     });
   });
 });
-app.post('/usuario', (request, response) => {
+app.post('/usuario', [verificaToken, verificaRole], (request, response) => {
   let body = request.body;
   let usuario = new Usuario({
     dni: body.dni,
@@ -64,7 +65,7 @@ app.post('/usuario', (request, response) => {
     response.json({ ok: true, usuario: usuarioRegistrado });
   });
 });
-app.put('/usuario/:id', (request, response) => {
+app.put('/usuario/:id', [verificaToken, verificaRole], (request, response) => {
   let id = request.params.id;
   let body = _.pick(request.body, [
     'dni',
@@ -91,20 +92,29 @@ app.put('/usuario/:id', (request, response) => {
     }
   );
 });
-app.delete('/usuario/:id', (request, response) => {
-  let id = request.params.id;
-  let estadoO = { estado: false };
-  Usuario.findByIdAndUpdate(id, estadoO, { new: true }, (error, resultado) => {
-    if (error) return response.status(400).json({ ok: false, error });
-    if (!resultado) {
-      return response
-        .status(400)
-        .json({ ok: false, error: { message: 'Usuario no encontrado' } });
-    }
-    response.json({
-      ok: true,
-      usuario: resultado
-    });
-  });
-});
+app.delete(
+  '/usuario/:id',
+  [verificaToken, verificaRole],
+  (request, response) => {
+    let id = request.params.id;
+    let estadoO = { estado: false };
+    Usuario.findByIdAndUpdate(
+      id,
+      estadoO,
+      { new: true },
+      (error, resultado) => {
+        if (error) return response.status(400).json({ ok: false, error });
+        if (!resultado) {
+          return response
+            .status(400)
+            .json({ ok: false, error: { message: 'Usuario no encontrado' } });
+        }
+        response.json({
+          ok: true,
+          usuario: resultado
+        });
+      }
+    );
+  }
+);
 module.exports = app;
