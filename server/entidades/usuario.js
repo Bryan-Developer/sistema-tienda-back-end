@@ -37,6 +37,10 @@ let usuarioSchema = new Schema({
     type: String,
     default: 'ROLE_USUARIO',
     enum: rolesValidos
+  },
+  google: {
+    type: Boolean,
+    default: false
   }
 });
 usuarioSchema.methods.toJSON = function() {

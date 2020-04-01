@@ -2,6 +2,8 @@ const Usuario = require('../entidades/usuario');
 const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const { OAuth2Client } = require('google-auth-library');
+const client = new OAuth2Client(process.env.CLIENTID);
 const app = express();
 app.post('/login', (request, response) => {
   let body = request.body;
@@ -49,6 +51,56 @@ app.post('/login', (request, response) => {
       usuario: resultado,
       token
     });
+  });
+});
+async function verify(token) {
+  const ticket = await client.verifyIdToken({
+    idToken: token,
+    audience: process.env.CLIENTID
+  });
+  const payload = ticket.getPayload();
+  return {
+    nombre: payload.name,
+    email: payload.email,
+    google: true
+  };
+}
+app.post('/google', async (request, response) => {
+  let token = request.body.idtoken;
+  let googleUser = await verify(token).catch(error => {
+    return response.status(403).json({ ok: false, error });
+  });
+  Usuario.findOne({ email: googleUser.email }, (error, usuarioDB) => {
+    if (error) {
+      return response.status(500).json({
+        ok: false,
+        error
+      });
+    }
+    if (usuarioDB) {
+      if (usuarioDB.google === false) {
+        return response.status(500).json({
+          ok: false,
+          error: {
+            message: 'Debe de usar su cuenta y contraseña'
+          }
+        });
+      } else {
+        let token = jwt.sign({ usuario: usuarioDB }, process.env.SEED, {
+          expiresIn: process.env.CADUCIDAD_TOKEN
+        });
+        return response.json({ ok: true, usuario: usuarioDB, token });
+      }
+    } else {
+      let usuario = new Usuario();
+      usuario.nombre = googleUser.nombre;
+      usuario.email = googleUser.email;
+      usuario.google = googleUser.google;
+      usuario.dni = Math.round(Math.random() * 100000000).toString();
+    }
+  });
+  response.json({
+    usuario: googleUser
   });
 });
 module.exports = app;
