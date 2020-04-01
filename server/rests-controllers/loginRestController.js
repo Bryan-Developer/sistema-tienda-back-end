@@ -79,7 +79,7 @@ app.post('/google', async (request, response) => {
     }
     if (usuarioDB) {
       if (usuarioDB.google === false) {
-        return response.status(500).json({
+        return response.status(400).json({
           ok: false,
           error: {
             message: 'Debe de usar su cuenta y contraseña'
@@ -93,14 +93,26 @@ app.post('/google', async (request, response) => {
       }
     } else {
       let usuario = new Usuario();
-      usuario.nombre = googleUser.nombre;
+      usuario.nombres = googleUser.nombre;
+      usuario.apellidos = googleUser.nombre;
       usuario.email = googleUser.email;
       usuario.google = googleUser.google;
-      usuario.dni = Math.round(Math.random() * 100000000).toString();
+      let dni = Math.round(Math.random() * 100000000).toString() + '00000000';
+      usuario.dni = dni.slice(-16, 8);
+      usuario.contraseña = ':)';
+      usuario.save((error, usuarioSave) => {
+        if (error) {
+          return response.status(500).json({
+            ok: false,
+            error
+          });
+        }
+        let token = jwt.sign({ usuario: usuarioSave }, process.env.SEED, {
+          expiresIn: process.env.CADUCIDAD_TOKEN
+        });
+        return response.json({ ok: true, usuario: usuarioSave, token });
+      });
     }
-  });
-  response.json({
-    usuario: googleUser
   });
 });
 module.exports = app;
